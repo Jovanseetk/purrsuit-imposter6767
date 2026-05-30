@@ -1,31 +1,40 @@
-import 'dotenv/config'
-import express from 'express'
-import cors from 'cors'
+import cookieParser from 'cookie-parser';
+import cors from 'cors';
+import 'dotenv/config';
+import express from 'express';
+import { authenticate } from './src/middleware.js';
+import passport from './src/passport.js';
+import authRouter from './src/routes/auth.js';
 
 const app = express()
-app.use(cors())
-app.use(express.json())
+
+app.use(express.json());
+app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
+app.use(cookieParser());
+app.use(passport.initialize());
+
+// ROUTERS
+app.use('/auth', authRouter);
 
 // API ROUTES
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'backend is running yipeee' })
-})
 
-app.get('/api/hello', (req, res) => {
+// test route
+app.get('/api/hello', (req, res) => { 
   res.json({ message: 'Hello from Express!' })
 })
 
-// app.get('/api/users', async (req, res) => {
-//  const { rows } = await sql`SELECT * FROM users`
-//  res.json(rows)
-// }) enxi u test this  it's database related 
+// get current user info
+app.get('/api/me', authenticate, (req, res) => res.json(req.user));
 
-app.post("/api/coins", (req, res) => {
-  const { coins } = req.body.coins;
-  console.log({ coins });
-  res.json({ message: "coins rewarded!" })
-} 
-)
+// retrieve user coins
+app.get('/api/coins', authenticate, async (req, res) => {
+  try {
+    const rows = await sql`SELECT coins FROM users WHERE id = ${req.user.id}`;
+    res.json({ coins: rows[0].coins });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch coins' });
+  }
+});
 
 const PORT = process.env.PORT || 5000
-app.listen(PORT, () => console.log('Server running on port 5000!'))
+app.listen(PORT, () => console.log(`Server running on port ${PORT}!`))
