@@ -48,16 +48,16 @@ app.get('/api/hello', (req, res) => {
   res.json({ message: 'Hello from Express!' })
 })
 
-// get current user info
-app.get('/api/me', authenticate, (req, res) => res.json(req.user));
-
-// retrieve user coins
-app.get('/api/coins', authenticate, async (req, res) => {
+// Current user's profile + coin balance, in one round-trip. The JWT supplies
+// the identity (id, email); name and coins come from a single users lookup.
+app.get('/api/me', authenticate, async (req, res) => {
   try {
-    const rows = await sql`SELECT coins::int AS coins FROM users WHERE id = ${req.user.id}`;
-    res.json({ coins: parseCoins(rows[0]?.coins) });
+    const rows = await sql`SELECT name, coins::int AS coins FROM users WHERE id = ${req.user.id}`;
+    const row = rows[0];
+    if (!row) return res.status(404).json({ error: 'User not found' });
+    res.json({ id: req.user.id, email: req.user.email, name: row.name, coins: parseCoins(row.coins) });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch coins' });
+    res.status(500).json({ error: 'Failed to fetch profile' });
   }
 });
 
@@ -82,16 +82,6 @@ app.post('/api/coins', authenticate, async (req, res) => {
     res.json({ coins: parseCoins(rows[0]?.coins) });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update coins' });
-  }
-});
-
-// retrieve user's name
-app.get('/api/name', authenticate, async (req, res) => {
-  try {
-    const rows = await sql`SELECT name FROM users WHERE id = ${req.user.id}`;
-    res.json({ name: rows[0].name });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch name' });
   }
 });
 
