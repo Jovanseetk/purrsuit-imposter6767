@@ -3,7 +3,6 @@ import { useAuth } from '../components/AuthContext.jsx';
 import { apiFetch } from '../services/api.js';
 import '../App.css';
 
-const API_URL = import.meta.env.VITE_API_URL;
 const TIMER_DURATION = 30; // in seconds
 
 export default function Dashboard() {
@@ -15,8 +14,9 @@ export default function Dashboard() {
   const [coinError, setCoinError] = useState(null);
   const [saving, setSaving] = useState(false);
 
+  // Load profile + balance from the single consolidated endpoint.
   useEffect(() => {
-    apiFetch('/api/coins')
+    apiFetch('/api/me')
       .then((r) => {
         if (!r.ok) throw new Error(`Request failed (${r.status})`);
         return r.json();
@@ -24,18 +24,10 @@ export default function Dashboard() {
       .then((data) => {
         if (typeof data.coins !== 'number') throw new Error('Invalid response');
         setCoins(data.coins);
+        setName(data.name || 'Unknown User');
       })
-      .catch(() => setCoinError('Could not load your coins.'));
+      .catch(() => setCoinError('Could not load your profile.'));
   }, []);
-
-  useEffect(() => {
-  fetch(`${API_URL}/api/name`, { credentials: 'include' })
-    .then(r => r.json())
-    .then(data => {
-      console.log('name response:', data);
-      setName(data.name || 'Unknown User'); // TODO: fix lol
-    });
-}, []);
 
   // Award is derived and persisted server-side; the UI reflects whatever balance
   // the POST returns, never an optimistic local guess.
